@@ -1,0 +1,19 @@
+{
+  "name": "lighter-paper",
+  "version": "1.0.0",
+  "description": "Grava o livro de ofertas da Lighter e roda em paper trading o fade de pico de volume (so short) e o momentum 14d ajustado por vol, com 1/2 Kelly",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test test/parity.test.js",
+    "test:momentum": "node --test test/momentum.test.js",
+    "test:fdiff": "node --test test/fdiff.test.js",
+    "test:fdiff-parity": "node --test test/fdiff_parity.test.js",
+    "test:wkdgrid": "node --test test/wkdgrid.test.js",
+    "test:cohorts": "node --test test/cohorts.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

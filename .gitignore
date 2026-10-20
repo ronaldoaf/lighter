@@ -1,0 +1,8 @@
+# segredos
+.env*
+# dados brutos (2.8G) e logs
+data/
+*.log
+node_modules/
+# estado local de assistentes de codigo (pode conter comandos com senhas)
+.omc/

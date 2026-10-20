@@ -1,0 +1,89 @@
+{
+  "rest": "https://mainnet.zklighter.elliot.ai/api/v1",
+  "ws": "wss://mainnet.zklighter.elliot.ai/stream?readonly=true",
+  "dataDir": "data",
+  "port": 4002,
+  "host": "0.0.0.0",
+  "strategy": {
+    "classes": [
+      "cripto",
+      "acoes"
+    ],
+    "sides": [
+      "short"
+    ],
+    "bodyMinATR": 1.5,
+    "volMinRatio": 3.0,
+    "liqMinUSD": 500000,
+    "topN": 1,
+    "maxCostPerLeg": 0.0015,
+    "costFilterSize": "order",
+    "setupWindowBars": 8,
+    "maxCounterCandles": 3,
+    "minRiskPct": 0.02,
+    "RR": 1.5,
+    "timeoutBars": 96,
+    "barCloseDelaySec": 8
+  },
+  "sizing": {
+    "initialEquity": 10000,
+    "kellyFraction": 0.5,
+    "kellyPriorFile": "data/kelly_prior.json",
+    "kellyPriorWeight": 1.0,
+    "maxRiskPerTrade": 0.06,
+    "maxOpenRisk": 0.25,
+    "maxLeveragePerTrade": 3,
+    "maxGrossLeverage": 6
+  },
+  "fadeC2": {
+    "enabled": true,
+    "strategy": {
+      "preFilter": true,
+      "topN": 2
+    },
+    "sizing": {
+      "kellyFraction": 0.3333,
+      "kellyPriorFile": "data/kelly_prior_c2.json"
+    }
+  },
+  "momentum": {
+    "enabled": true,
+    "lookbackDays": 14,
+    "volDays": 30,
+    "perSide": 3,
+    "holdDays": 7,
+    "liqMinUSD": 500000,
+    "rebalanceHourUTC": 0,
+    "initialEquity": 10000,
+    "kellyFraction": 0.5,
+    "maxGrossLeverage": 3,
+    "minTradeUSD": 10,
+    "priorFile": "data/momentum_prior.json"
+  },
+  "recorder": {
+    "intervalSec": 15,
+    "hotIntervalSec": 1,
+    "hotHoldMin": 240,
+    "depthEveryMin": 5,
+    "depthHotEverySec": 15,
+    "depthLevels": 25,
+    "costSizesUSD": [
+      1000,
+      5000,
+      20000
+    ],
+    "statsEverySec": 60,
+    "statsHotEverySec": 5
+  },
+  "jev": {
+    "enabled": true,
+    "model": "jev-latest",
+    "topN": 5,
+    "rank": "abs",
+    "liqMinUSD": 500000,
+    "initialEquity": 10000,
+    "positionFraction": 0.25,
+    "maxPositions": 4,
+    "minProb": 0.65
+  }
+}

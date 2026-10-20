@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighter Paper Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root {
+  --bg: #070a12; --bg2: #0c1220; --card: rgba(18, 25, 41, .72); --card2: #141c2e; --line: rgba(148, 163, 184, .12);
+  --text: #e6ebf5; --mut: #8a96ad; --dim: #5b6680;
+  --green: #22c55e; --green2: rgba(34, 197, 94, .14); --red: #f43f5e; --red2: rgba(244, 63, 94, .14);
+  --cyan: #38bdf8; --cyan2: rgba(56, 189, 248, .14); --violet: #a78bfa; --violet2: rgba(167, 139, 250, .14);
+  --amber: #f59e0b; --amber2: rgba(245, 158, 11, .14);
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: Inter, system-ui, sans-serif; color: var(--text); font-size: 14px; min-height: 100vh;
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.10), transparent 60%),
+              radial-gradient(900px 500px at 100% 0%, rgba(167,139,250,.10), transparent 60%), var(--bg);
+  background-attachment: fixed;
+}
+.wrap { max-width: 1600px; margin: 0 auto; padding: 20px 24px 60px; }
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 800;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)); color: #0b1020; font-size: 18px; box-shadow: 0 8px 30px rgba(56,189,248,.25); }
+h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.02em; }
+.sub { color: var(--mut); font-size: 12.5px; margin-top: 2px; }
+.spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--card2); border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+.pill.ok .dot { background: var(--green); box-shadow: 0 0 0 4px rgba(34,197,94,.18); animation: pulse 2s infinite; }
+.pill.warn .dot { background: var(--amber); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } }
+.clock { font-family: var(--mono); font-size: 13px; }
+.count { font-family: var(--mono); color: var(--cyan); font-weight: 600; }
+
+.grid { display: grid; gap: 16px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px rgba(0,0,0,.25); min-width: 0; }
+.kpi .label { color: var(--mut); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.kpi .value { font-size: 26px; font-weight: 700; margin-top: 6px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi .foot { color: var(--mut); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi.accent { background: linear-gradient(160deg, rgba(56,189,248,.16), rgba(167,139,250,.10) 60%, var(--card)); }
+.pos { color: var(--green); } .neg { color: var(--red); } .mut { color: var(--mut); } .cy { color: var(--cyan); } .vi { color: var(--violet); }
+
+.row2 { grid-template-columns: 2fr 1fr; margin-bottom: 16px; }
+.row3 { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
+@media (max-width: 1100px) { .row2, .row3 { grid-template-columns: 1fr; } }
+.card h2 { font-size: 13px; margin: 0 0 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--mut);
+  display: flex; align-items: center; gap: 8px; }
+.card h2 .n { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+.card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.chart { position: relative; height: 290px; }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; color: var(--dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+  padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: var(--bg2); z-index: 1; }
+td { padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-size: 12.5px; }
+tr:hover td { background: rgba(255,255,255,.02); }
+.scroll { max-height: 380px; overflow: auto; border-radius: 10px; }
+#setups { display: block; overflow-x: auto; }
+body { overflow-x: hidden; }
+@media (max-width: 640px) { .wrap { padding: 16px 16px 40px; } .card h2 { flex-wrap: wrap; } .tools { margin-left: 0; } .meta { grid-template-columns: repeat(2, 1fr); } }
+.scroll::-webkit-scrollbar { width: 8px; height: 8px; } .scroll::-webkit-scrollbar-thumb { background: #243049; border-radius: 8px; }
+.sym { font-weight: 700; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.t-cripto { background: var(--cyan2); color: var(--cyan); } .t-acoes { background: var(--violet2); color: var(--violet); }
+.t-other { background: rgba(148,163,184,.12); color: var(--mut); }
+.t-setup, .t-aberto { background: var(--green2); color: var(--green); } .t-ignorado { background: rgba(148,163,184,.12); color: var(--mut); }
+.t-cancelado, .t-descartado { background: var(--amber2); color: var(--amber); }
+.t-short { background: var(--red2); color: var(--red); } .t-long { background: var(--green2); color: var(--green); }
+.t-alvo { background: var(--green2); color: var(--green); } .t-stop { background: var(--red2); color: var(--red); } .t-timeout { background: var(--amber2); color: var(--amber); }
+.hot { color: var(--amber); }
+.empty { color: var(--dim); text-align: center; padding: 26px 0; font-size: 13px; }
+
+.poscard { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--card2); margin-bottom: 10px; }
+.poscard .top { display: flex; align-items: center; gap: 10px; }
+.poscard .big { font-size: 22px; font-weight: 700; margin-left: auto; font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 10px; border-radius: 6px; margin: 16px 0 6px;
+  background: linear-gradient(90deg, rgba(34,197,94,.45), rgba(34,197,94,.12) 40%, rgba(244,63,94,.12) 60%, rgba(244,63,94,.45)); }
+.track .mk { position: absolute; top: -5px; width: 3px; height: 20px; border-radius: 2px; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,.6); transition: left .6s ease; }
+.track .ent { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--cyan); }
+.legend { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--mut); font-family: var(--mono); }
+.meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; font-size: 12px; }
+.meta div span { display: block; color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
+.meta div b { font-family: var(--mono); font-weight: 500; }
+
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; }
+.stat span { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; display: block; }
+.stat b { font-family: var(--mono); font-weight: 500; font-size: 14px; }
+.bar { height: 6px; border-radius: 4px; background: var(--card2); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--violet)); border-radius: 4px; transition: width .6s; }
+.log { font-family: var(--mono); font-size: 11.5px; line-height: 1.6; max-height: 260px; overflow: auto; color: var(--mut); }
+.log .SINAL { color: var(--cyan); } .log .ENTRADA { color: var(--green); } .log .SAIDA { color: var(--violet); }
+.log .ERRO { color: var(--red); } .log .AVISO { color: var(--amber); } .log .SETUP { color: #cbd5e1; }
+.tools { display: flex; gap: 8px; margin-left: auto; }
+input, select { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 12.5px; }
+.seg { display: inline-flex; background: var(--card2); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+.seg button { background: none; border: 0; color: var(--mut); font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 7px; cursor: pointer; }
+.seg button.on { background: #1e293b; color: var(--text); }
+.tabs { display: inline-flex; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.tabs button { background: none; border: 0; color: var(--mut); font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+.tabs button.on { background: linear-gradient(135deg, rgba(56,189,248,.22), rgba(167,139,250,.18)); color: var(--text); }
+[hidden] { display: none !important; }
+.rank { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .rank { grid-template-columns: 1fr; } }
+.rk { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); margin-bottom: 8px; }
+.rk .k { margin-left: auto; font-family: var(--mono); font-weight: 600; }
+.rk .sub2 { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
+.wbar { position: relative; height: 6px; border-radius: 4px; background: rgba(148,163,184,.08); min-width: 60px; }
+.wbar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.wbar i.l { left: 50%; background: var(--green); } .wbar i.s { right: 50%; background: var(--red); }
+.wbar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: .8; }
+.log .MOMENTUM { color: var(--violet); }
+.tbar { position: relative; width: 110px; height: 8px; border-radius: 4px; background: rgba(148,163,184,.08); display: inline-block; vertical-align: middle; }
+.tbar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.tbar::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(148,163,184,.4); }
+.tscore { display: inline-block; width: 40px; text-align: right; font-family: var(--mono); font-weight: 600; margin-left: 8px; }
+.spark { display: block; }
+#t-table th.sortable { cursor: pointer; user-select: none; } #t-table th.sortable:hover { color: var(--text); }
+#t-table th.sorted { color: var(--cyan); }
+.breadth { height: 10px; border-radius: 5px; display: flex; overflow: hidden; background: rgba(148,163,184,.10); margin-top: 6px; }
+.breadth i { display: block; height: 100%; }
+.t-forte-alta { background: var(--green2); color: var(--green); } .t-forte-baixa { background: var(--red2); color: var(--red); }
+.t-alta { background: rgba(34,197,94,.07); color: #86efac; } .t-baixa { background: rgba(244,63,94,.07); color: #fda4af; }
+.stat b span { display: inline; text-transform: none; letter-spacing: 0; font-size: inherit; }
+.lagbox { display: inline-flex; align-items: center; gap: 8px; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px; }
+.lagbox.on { border-color: rgba(245,158,11,.55); box-shadow: 0 0 0 3px rgba(245,158,11,.10); }
+.lagbox button { background: #1e293b; border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 7px; cursor: pointer; }
+.lagbox button:hover { background: #26334d; }
+.lagbox input[type=range] { width: 200px; accent-color: var(--amber); padding: 0; border: 0; background: none; }
+.lagbox .lv { font-family: var(--mono); font-weight: 600; min-width: 74px; text-align: center; }
+.lagbox.on .lv { color: var(--amber); }
+.t-lateral { background: rgba(148,163,184,.10); color: var(--mut); }
+footer { color: var(--dim); font-size: 12px; text-align: center; margin-top: 26px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">L</div>
+    <div>
+      <h1 id="title">Fade de pico de volume · Paper Trading</h1>
+      <div class="sub" id="subtitle">Lighter perps · cripto + ações · só short · RR 1,5 · timeout 24h · ½ Kelly</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="tabs" id="tabs"><button data-v="fade" class="on">Fade de volume</button><button data-v="fadec2">Fade C2</button><button data-v="mom">Momentum 14d</button><button data-v="trend">Tendência</button><button data-v="shadow">Sombra</button><button data-v="jev">JEV</button></span>
+    <span class="pill" id="status"><span class="dot"></span><span>conectando…</span></span>
+    <span class="pill">próxima barra <span class="count" id="countdown">--:--</span></span>
+    <span class="pill clock" id="clock">--</span>
+  </header>
+
+  <div id="v-fade">
+  <section class="grid kpis">
+    <div class="card kpi accent"><div class="label">Capital (marcado a mercado)</div><div class="value" id="k-mtm">–</div><div class="foot" id="k-mtm-f">–</div></div>
+    <div class="card kpi"><div class="label">Resultado</div><div class="value" id="k-pnl">–</div><div class="foot" id="k-pnl-f">–</div></div>
+    <div class="card kpi"><div class="label">R médio real</div><div class="value" id="k-rreal">–</div><div class="foot" id="k-rreal-f">–</div></div>
+    <div class="card kpi"><div class="label">R médio teórico</div><div class="value" id="k-rtheo">–</div><div class="foot">backtest: <span id="k-bt">–</span></div></div>
+    <div class="card kpi"><div class="label">Taxa de acerto</div><div class="value" id="k-win">–</div><div class="foot" id="k-win-f">–</div></div>
+    <div class="card kpi"><div class="label">Drawdown máx.</div><div class="value" id="k-dd">–</div><div class="foot" id="k-dd-f">sobre o capital marcado</div></div>
+    <div class="card kpi"><div class="label" id="k-kelly-l">Risco por trade (½ Kelly)</div><div class="value vi" id="k-kelly">–</div><div class="foot" id="k-kelly-f">–</div></div>
+    <div class="card kpi"><div class="label">Exposição</div><div class="value" id="k-exp">–</div><div class="foot" id="k-exp-f">–</div></div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card">
+      <h2>Curva de capital <span class="right mut" id="curve-info"></span></h2>
+      <div class="chart"><canvas id="equity"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Posições abertas <span class="n" id="n-pos">0</span></h2>
+      <div id="positions"></div>
+      <h2 style="margin-top:14px">Setups armando <span class="n" id="n-setups">0</span></h2>
+      <div id="setups"></div>
+    </div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card">
+      <h2>Sinais recentes <span class="n" id="n-sig">0</span><span class="right mut" id="scan-info"></span></h2>
+      <div class="scroll"><table id="signals"></table></div>
+    </div>
+    <div class="card">
+      <h2>Candidatos da última barra <span class="right mut">corpo ≥ 1,5 ATR · volume ≥ 3× · liq ≥ US$500k</span></h2>
+      <div class="scroll"><table id="cands"></table></div>
+    </div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card">
+      <h2>Trades encerrados <span class="n" id="n-closed">0</span></h2>
+      <div class="scroll"><table id="closed"></table></div>
+    </div>
+    <div class="card">
+      <h2>Real × teórico</h2>
+      <div class="chart" style="height:220px"><canvas id="rchart"></canvas></div>
+      <div class="stats" style="margin-top:14px" id="exec-stats"></div>
+    </div>
+  </section>
+
+  </div>
+
+  <div id="v-mom" hidden>
+  <section class="grid kpis">
+    <div class="card kpi accent"><div class="label">Capital (marcado a mercado)</div><div class="value" id="m-eq">–</div><div class="foot" id="m-eq-f">–</div></div>
+    <div class="card kpi"><div class="label">Resultado real</div><div class="value" id="m-pnl">–</div><div class="foot" id="m-pnl-f">–</div></div>
+    <div class="card kpi"><div class="label">Teórico (backtest)</div><div class="value" id="m-theo">–</div><div class="foot" id="m-theo-f">–</div></div>
+    <div class="card kpi"><div class="label">Retorno diário médio</div><div class="value" id="m-ret">–</div><div class="foot" id="m-ret-f">–</div></div>
+    <div class="card kpi"><div class="label">Alavancagem bruta (½ Kelly)</div><div class="value vi" id="m-lev">–</div><div class="foot" id="m-lev-f">–</div></div>
+    <div class="card kpi"><div class="label">Drawdown máx.</div><div class="value" id="m-dd">–</div><div class="foot">sobre o capital marcado</div></div>
+    <div class="card kpi"><div class="label">Custo de execução</div><div class="value" id="m-cost">–</div><div class="foot" id="m-cost-f">–</div></div>
+    <div class="card kpi"><div class="label">Próximo rebalanceamento</div><div class="value cy" id="m-next" style="font-family:var(--mono)">–</div><div class="foot" id="m-next-f">–</div></div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card">
+      <h2>Curva de capital — real × teórico <span class="right mut" id="m-curve-info"></span></h2>
+      <div class="chart"><canvas id="m-equity"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Carteira-meta de hoje <span class="right mut" id="m-rank-info"></span></h2>
+      <div class="rank"><div><div class="mut" style="font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">compra · mais fortes</div><div id="m-long"></div></div>
+        <div><div class="mut" style="font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">vende · mais fracos</div><div id="m-short"></div></div></div>
+      <div class="mut" style="font-size:12px;margin-top:6px">chave = retorno 14d ÷ vol 30d · a carteira é a média das metas dos últimos 7 dias</div>
+    </div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card">
+      <h2>Posições <span class="n" id="m-n-pos">0</span><span class="right mut" id="m-pos-info"></span></h2>
+      <div class="scroll"><table id="m-pos"></table></div>
+    </div>
+    <div class="card">
+      <h2>Rebalanceamentos <span class="n" id="m-n-reb">0</span></h2>
+      <div class="scroll"><table id="m-reb"></table></div>
+    </div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card">
+      <h2>Ranking completo <span class="n" id="m-n-rank">0</span><span class="right mut">só cripto · liq ≥ US$500k</span></h2>
+      <div class="scroll"><table id="m-rank"></table></div>
+    </div>
+    <div class="card">
+      <h2>Execuções no livro <span class="n" id="m-n-fills">0</span><span class="right mut" id="m-fill-info"></span></h2>
+      <div class="scroll"><table id="m-fills"></table></div>
+    </div>
+  </section>
+  </div>
+
+  <div id="v-shadow" hidden>
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Candidatos <span class="right mut" id="s-info"></span></h2>
+      <div class="scroll"><table id="s-sum"></table></div>
+      <div class="mut" style="font-size:12px;margin-top:8px">sem capital · cada perna vale 1 unidade de notional · <b>mid</b> = meio do livro (teórico) · <b>US$1k / 5k</b> = ordem a mercado varrendo o livro gravado · funding real incluído · regras congeladas · médias por evento (noite, fim de semana, cesta)</div>
+    </div>
+  </section>
+  <section class="grid row3">
+    <div class="card">
+      <h2>Fade × fluxo (B3) e × momentum (H4) <span class="right mut" id="s-tbf-info"></span></h2>
+      <div class="stats" id="s-tbf-stats"></div>
+      <div class="scroll" style="margin-top:12px"><table id="s-tbf"></table></div>
+    </div>
+    <div class="card">
+      <h2>Momentum sem esticados <span class="right mut" id="s-mom-info"></span></h2>
+      <div class="stats" id="s-mom-stats"></div>
+      <div class="scroll" style="margin-top:12px"><table id="s-mom"></table></div>
+    </div>
+  </section>
+  <section class="grid row3">
+    <div class="card">
+      <h2>Posições abertas <span class="n" id="s-n-pos">0</span></h2>
+      <div class="scroll"><table id="s-pos"></table></div>
+    </div>
+    <div class="card">
+      <h2>Capitulação: % dos cripto líquidos com score ≤ −80 <span class="right mut" id="s-cap-info"></span></h2>
+      <div class="chart" style="height:180px"><canvas id="s-cap"></canvas></div>
+      <h2 style="margin-top:14px">RSI(2) no último fechamento</h2>
+      <div id="s-rsi" class="stats"></div>
+    </div>
+  </section>
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Trades fechados <span class="n" id="s-n-closed">0</span></h2>
+      <div class="scroll" style="max-height:480px"><table id="s-closed"></table></div>
+    </div>
+  </section>
+  </div>
+
+  <div id="v-jev" hidden>
+  <section class="grid kpis">
+    <div class="card kpi accent"><div class="label">Capital (marcado a mercado)</div><div class="value" id="j-eq">–</div><div class="foot" id="j-eq-f">–</div></div>
+    <div class="card kpi"><div class="label">Resultado</div><div class="value" id="j-pnl">–</div><div class="foot" id="j-pnl-f">–</div></div>
+    <div class="card kpi"><div class="label">Trades fechados</div><div class="value" id="j-n">–</div><div class="foot" id="j-n-f">–</div></div>
+    <div class="card kpi"><div class="label">Taxa de acerto</div><div class="value" id="j-win">–</div><div class="foot" id="j-win-f">–</div></div>
+    <div class="card kpi"><div class="label">Drawdown máx.</div><div class="value" id="j-dd">–</div><div class="foot">sobre o capital marcado</div></div>
+    <div class="card kpi"><div class="label">Consultas ao JEV</div><div class="value vi" id="j-calls">–</div><div class="foot" id="j-calls-f">–</div></div>
+  </section>
+  <section class="grid row2">
+    <div class="card">
+      <h2>Capital <span class="right mut" id="j-info"></span></h2>
+      <div class="chart"><canvas id="j-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2><span id="j-top-t">Top 5 por força 4h · 1d · 7d</span> <span class="right mut" id="j-top-info"></span></h2>
+      <div id="j-top"></div>
+    </div>
+  </section>
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Posições abertas <span class="n" id="j-n-pos">0</span></h2>
+      <div class="scroll"><table id="j-pos"></table></div>
+    </div>
+  </section>
+  <section class="grid row3">
+    <div class="card">
+      <h2>Respostas do JEV <span class="right mut">a cada barra de 15m</span></h2>
+      <div class="scroll" style="max-height:520px"><table id="j-dec"></table></div>
+    </div>
+    <div class="card">
+      <h2>Trades fechados <span class="n" id="j-n-closed">0</span></h2>
+      <div class="scroll" style="max-height:520px"><table id="j-closed"></table></div>
+    </div>
+  </section>
+  </div>
+
+  <div id="v-trend" hidden>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <span class="mut" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Horizontes</span>
+    <span class="tabs" id="t-set"><button data-v="longo" class="on">1d · 7d · 30d</button><button data-v="curto">4h · 1d · 7d</button></span>
+    <span class="mut" style="font-size:12px" id="t-set-info"></span>
+    <span class="spacer"></span>
+    <span class="mut" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Atraso</span>
+    <span class="lagbox" id="t-lagbox">
+      <button data-d="-4" title="1 hora mais recente">−1h</button><button data-d="-1" title="15 minutos mais recente">−15m</button>
+      <input type="range" id="t-lag" min="0" max="288" step="1" value="0">
+      <button data-d="1" title="15 minutos mais antigo">+15m</button><button data-d="4" title="1 hora mais antigo">+1h</button>
+      <span class="lv" id="t-lag-v">agora</span>
+      <button id="t-lag-0">agora</button>
+    </span>
+    <span class="mut" style="font-size:12px" id="t-lag-at"></span>
+  </div>
+  <section class="grid kpis">
+    <div class="card kpi accent"><div class="label">Ativos medidos</div><div class="value" id="t-n">–</div><div class="foot" id="t-n-f">–</div></div>
+    <div class="card kpi"><div class="label">Alta forte (≥ +40)</div><div class="value pos" id="t-up">–</div><div class="foot" id="t-up-f">–</div></div>
+    <div class="card kpi"><div class="label">Baixa forte (≤ −40)</div><div class="value neg" id="t-dn">–</div><div class="foot" id="t-dn-f">–</div></div>
+    <div class="card kpi"><div class="label">Lateral (|força| &lt; 20)</div><div class="value" id="t-flat">–</div><div class="foot" id="t-flat-f">–</div></div>
+    <div class="card kpi"><div class="label">Força média · cripto</div><div class="value" id="t-cr">–</div><div class="foot" id="t-cr-f">–</div></div>
+    <div class="card kpi"><div class="label">Força · BTC / ETH</div><div class="value" id="t-btc">–</div><div class="foot" id="t-btc-f">–</div></div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card">
+      <h2>Mais fortes em alta <span class="right mut">volume 24h ≥ US$500k</span></h2>
+      <div id="t-top-up"></div>
+    </div>
+    <div class="card">
+      <h2>Mais fortes em baixa <span class="right mut">volume 24h ≥ US$500k</span></h2>
+      <div id="t-top-dn"></div>
+    </div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card">
+      <h2>Amplitude por classe</h2>
+      <div id="t-breadth"></div>
+    </div>
+    <div class="card">
+      <h2>Como ler</h2>
+      <div class="mut" style="font-size:12.5px;line-height:1.6">
+        <p style="margin:0 0 8px"><b style="color:var(--text)">Força</b> (−100 a +100) = média dos retornos de 1d, 7d e 30d medidos em desvios-padrão
+          (retorno ÷ (vol 1h × √horas), cada um limitado a ±2) × 100/2; +100 = os três horizontes subiram 2 desvios ou mais. Mede quanto o preço andou em relação ao ruído normal do próprio ativo, então BTC e uma small cap ficam na mesma escala.</p>
+        <p style="margin:0 0 8px">≥ 40 forte · 20–40 moderada · &lt; 20 lateral. Entre os perps a força tem desvio ~25, então |força| ≥ 40 fica nos ~15% mais extremos.</p>
+        <p style="margin:0 0 8px"><b style="color:var(--text)">Alinh.</b> = quantos horizontes (1d/7d/30d) apontam para o mesmo lado da força.
+          <b style="color:var(--text)">R²</b> = quão reta é a subida/queda (1 = linha reta). <b style="color:var(--text)">Efic.</b> = deslocamento líquido ÷ caminho percorrido (Kaufman).
+          Os dois são medidos em 7d no conjunto 1d·7d·30d e em 1d no conjunto 4h·1d·7d.
+          <b style="color:var(--text)">z</b> em destaque quando |z| ≥ 2.</p>
+        <p style="margin:0 0 8px"><b style="color:var(--text)">4h · 1d · 7d</b> mostra a tendência de curto prazo (muda rápido); <b style="color:var(--text)">1d · 7d · 30d</b> a de médio prazo.
+          A volatilidade de referência é a mesma (1h em 30d) nos dois.</p>
+        <p style="margin:0 0 8px"><b style="color:var(--text)">Atraso</b> mostra o estado dos scores N × 15 min antes da última barra de 15m fechada (até 72h), calculado só com os dados disponíveis naquele instante.</p>
+        <p style="margin:0">Candles de 15m (últimos ~9 dias) e de 1h (histórico) da Lighter, recalculado a cada barra de 15m. É uma métrica descritiva: ainda não foi testada como sinal de trade.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Todos os ativos <span class="n" id="t-count">0</span>
+        <span class="tools">
+          <span class="seg" id="t-cls"><button data-v="all" class="on">todos</button><button data-v="cripto">cripto</button><button data-v="acoes">ações</button><button data-v="etf_indice">índices</button><button data-v="commodities">commod.</button><button data-v="forex">forex</button></span>
+          <span class="seg" id="t-liq"><button data-v="0">toda liq.</button><button data-v="500000" class="on">≥ $500k</button></span>
+          <input id="t-q" placeholder="buscar ativo" size="10">
+        </span></h2>
+      <div class="scroll" style="max-height:640px"><table id="t-table"></table></div>
+    </div>
+  </section>
+  </div>
+
+  <section class="grid row2">
+    <div class="card">
+      <h2>Custo de execução no livro (ao vivo)
+        <span class="tools">
+          <span class="seg" id="cls-seg"><button data-v="all" class="on">todos</button><button data-v="cripto">cripto</button><button data-v="acoes">ações</button><button data-v="hot">quentes</button></span>
+          <input id="q" placeholder="buscar ativo" size="10">
+        </span>
+      </h2>
+      <div class="scroll" style="max-height:420px"><table id="costs"></table></div>
+    </div>
+    <div class="card">
+      <h2>Gravador do livro</h2>
+      <div class="stats" id="rec"></div>
+      <h2 style="margin-top:18px">Custo mediano por classe (US$1k)</h2>
+      <div id="cls-costs"></div>
+      <h2 style="margin-top:18px">Log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+  <footer>Estratégia de ACHADOS_estrategias_volume.md · dados gravados em paper/data · atualiza a cada 2s</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fin = (x) => typeof x === 'number' && Number.isFinite(x);
+const money = (x, d = 2) => fin(x) ? (x < 0 ? '−' : '') + '$' + Math.abs(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '–';
+const pct = (x, d = 2) => fin(x) ? (x * 100).toFixed(d).replace('.', ',') + '%' : '–';
+const sgn = (x, d = 2, suf = '') => fin(x) ? (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(d).replace('.', ',') + suf : '–';
+const R = (x) => sgn(x, 2, 'R');
+const cls = (x) => fin(x) ? (x > 0 ? 'pos' : x < 0 ? 'neg' : '') : 'mut';
+const num = (x, d = 2) => fin(x) ? x.toFixed(d).replace('.', ',') : '–';
+const px = (x) => fin(x) ? (x >= 100 ? x.toFixed(2) : x >= 1 ? x.toFixed(4) : x.toPrecision(4)) : '–';
+const usdK = (x) => fin(x) ? (x >= 1e6 ? '$' + (x / 1e6).toFixed(1) + 'M' : '$' + (x / 1e3).toFixed(0) + 'k') : '–';
+const hhmm = (t) => t ? new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '–';
+const dt = (t) => t ? new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '–';
+const ago = (t) => { if (!t) return '–'; const s = (Date.now() - t) / 1000; return s < 60 ? s.toFixed(0) + 's' : s < 3600 ? (s / 60).toFixed(0) + 'min' : (s / 3600).toFixed(1) + 'h'; };
+const clsTag = (c) => `<span class="tag ${c === 'cripto' ? 't-cripto' : c === 'acoes' ? 't-acoes' : 't-other'}">${c === 'acoes' ? 'ações' : c}</span>`;
+const tag = (c, txt) => `<span class="tag t-${c}">${txt ?? c}</span>`;
+const table = (el, head, rows, empty) => {
+  el.innerHTML = rows.length ? `<thead><tr>${head.map((h) => `<th class="${h[1] || ''}">${h[0]}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`
+    : `<tbody><tr><td colspan="99" class="empty" style="white-space:normal">${empty}</td></tr></tbody>`;
+};
+
+let S = null, COSTS = [], nextBar = 0, clsFilter = 'all';
+Chart.defaults.color = '#8a96ad'; Chart.defaults.font.family = 'Inter'; Chart.defaults.borderColor = 'rgba(148,163,184,.08)';
+
+const eqChart = new Chart($('equity'), {
+  type: 'line',
+  data: { datasets: [
+    { label: 'Marcado a mercado', data: [], borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0, tension: .25, fill: true,
+      backgroundColor: (c) => { const g = c.chart.ctx.createLinearGradient(0, 0, 0, c.chart.height); g.addColorStop(0, 'rgba(56,189,248,.28)'); g.addColorStop(1, 'rgba(56,189,248,0)'); return g; } },
+    { label: 'Realizado', data: [], borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, stepped: true, borderDash: [4, 4] },
+  ] },
+  options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { type: 'time', grid: { display: false }, time: { tooltipFormat: 'dd/MM HH:mm', minUnit: 'minute',
+        displayFormats: { minute: 'HH:mm', hour: 'dd/MM HH:mm', day: 'dd/MM' } } }, y: { ticks: { callback: (v) => '$' + v.toLocaleString('en-US') } } },
+    plugins: { legend: { labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${money(c.parsed.y)}` } } } },
+});
+const rChart = new Chart($('rchart'), {
+  type: 'bar',
+  data: { labels: [], datasets: [
+    { label: 'R teórico', data: [], backgroundColor: 'rgba(167,139,250,.55)', borderRadius: 4 },
+    { label: 'R real', data: [], backgroundColor: 'rgba(56,189,248,.8)', borderRadius: 4 },
+  ] },
+  options: { maintainAspectRatio: false, animation: false, scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } } },
+    plugins: { legend: { labels: { boxWidth: 12, usePointStyle: true } } } },
+});
+
+function render() {
+  if (!S) return;
+  const c2 = tab === 'fadec2';
+  const st = c2 ? S.strategyC2 : S.strategy;
+  const SZ = (c2 ? S.config.sizingC2 : S.config.sizing) || S.config.sizing;
+  const ok = S.status === 'rodando';
+  $('status').className = 'pill ' + (ok ? 'ok' : 'warn');
+  $('status').lastElementChild.textContent = S.status;
+  nextBar = S.nextBar;
+  if (tab === 'mom') renderMom();
+  if (!st) { if (c2) $('k-mtm-f').textContent = 'fade C2 desligado (config.fadeC2.enabled)'; return; }
+  const kf = SZ.kellyFraction;
+  $('k-kelly-l').textContent = `Risco por trade (${Math.abs(kf - 0.5) < 1e-3 ? '½' : Math.abs(kf - 1 / 3) < 1e-3 ? '⅓' : Math.abs(kf - 0.25) < 1e-3 ? '¼' : num(kf, 2) + '×'} Kelly)`;
+
+  // KPIs
+  const pnl = st.mtm - st.startEquity;
+  $('k-mtm').textContent = money(st.mtm);
+  $('k-mtm-f').innerHTML = `realizado ${money(st.equity)} · início ${money(st.startEquity, 0)}`;
+  $('k-pnl').innerHTML = `<span class="${cls(pnl)}">${money(pnl)}</span>`;
+  $('k-pnl-f').innerHTML = `<span class="${cls(pnl)}">${sgn(pnl / st.startEquity * 100, 2, '%')}</span> desde ${dt(st.startedAt)}`;
+  if (c2 && S.strategy) {
+    const o = S.strategy, op = o.mtm - o.startEquity;
+    $('k-pnl-f').innerHTML += ` · fade atual <span class="${cls(op)}">${sgn(op / o.startEquity * 100, 2, '%')}</span> (desde ${dt(o.startedAt)})`;
+  }
+  const r = st.stats.real, t = st.stats.theo;
+  $('k-rreal').innerHTML = `<span class="${cls(r.mean)}">${r.n ? R(r.mean) : '–'}</span>`;
+  $('k-rreal-f').textContent = r.n ? `${r.n} trades · soma ${R(r.mean * r.n)}` : 'sem trades encerrados';
+  $('k-rtheo').innerHTML = `<span class="${cls(t.mean)}">${t.n ? R(t.mean) : '–'}</span>`;
+  const p = st.kelly.prior;
+  $('k-bt').textContent = p ? `${R(p.mean)} · ${pct(p.win, 0)} acerto · n=${p.n}` : '–';
+  $('k-win').textContent = r.n ? pct(r.win, 1) : '–';
+  $('k-win-f').textContent = 'empate com RR 1,5 ≈ 40%';
+  $('k-dd').innerHTML = `<span class="${st.maxDD < 0 ? 'neg' : ''}">${pct(st.maxDD)}</span>`;
+  $('k-kelly').textContent = pct(st.kelly.riskFrac);
+  $('k-kelly-f').textContent = `Kelly cheio ${pct(st.kelly.full, 1)} · ${st.kelly.liveN} trades do paper + ${p?.n ?? 0} do backtest`;
+  $('k-exp').textContent = num(st.kelly.gross, 2) + '×';
+  $('k-exp-f').textContent = `risco aberto ${pct(st.kelly.openRisk)} de ${pct(SZ.maxOpenRisk, 0)} máx.`;
+
+  // curva
+  eqChart.data.datasets[0].data = st.curve.map((c) => ({ x: c.t, y: c.mtm }));
+  eqChart.data.datasets[1].data = st.curve.map((c) => ({ x: c.t, y: c.equity }));
+  eqChart.update('none');
+  $('curve-info').textContent = `${st.curve.length} pontos`;
+
+  // posicoes
+  $('n-pos').textContent = st.positions.length;
+  $('positions').innerHTML = st.positions.length ? st.positions.map((q) => {
+    const lo = Math.min(q.stop, q.tgt), hi = Math.max(q.stop, q.tgt), w = hi - lo;
+    const at = (x) => Math.max(0, Math.min(100, (x - lo) / w * 100));
+    const left = q.d < 0 ? 'alvo' : 'stop', right = q.d < 0 ? 'stop' : 'alvo';
+    const held = Math.floor((S.now - q.fillBar) / 900000);
+    return `<div class="poscard">
+      <div class="top"><span class="sym">${q.sym}</span>${tag(q.side)}${clsTag(q.cls)}<span class="big ${cls(q.uR)}">${R(q.uR)}</span></div>
+      <div class="track"><div class="ent" style="left:${at(q.E)}%"></div><div class="mk" style="left:calc(${at(q.px)}% - 1px)"></div></div>
+      <div class="legend"><span>${left} ${px(lo)}</span><span class="cy">entrada ${px(q.E)}</span><span>${right} ${px(hi)}</span></div>
+      <div class="meta">
+        <div><span>Preço</span><b>${px(q.px)}</b></div><div><span>Resultado</span><b class="${cls(q.upnl)}">${money(q.upnl)}</b></div>
+        <div><span>Notional</span><b>${money(q.notional, 0)}</b></div><div><span>Barras</span><b>${held}/96</b></div>
+        <div><span>Risco</span><b>${pct(q.riskPct)}</b></div><div><span>% capital</span><b>${pct(q.riskFrac)}</b></div>
+        <div><span>Slippage entr.</span><b class="${q.slipEntry > 0 ? 'neg' : 'pos'}">${pct(q.slipEntry, 3)}</b></div><div><span>Funding</span><b class="${cls(q.funding)}">${money(q.funding, 2)}</b></div>
+      </div></div>`;
+  }).join('') : '<div class="empty">nenhuma posição aberta</div>';
+
+  // setups
+  $('n-setups').textContent = st.setups.length;
+  table($('setups'), [['Ativo'], ['Sinal'], ['Gatilho', 'num'], ['Stop', 'num'], ['Risco', 'num'], ['Contra', 'num'], ['Janela', 'num']],
+    st.setups.map((s) => {
+      const left = Math.max(0, Math.round((s.end + 900000 - S.now) / 900000));
+      const risk = s.trig ? Math.abs(s.hi - s.trig) / s.trig : null;
+      return `<tr><td class="sym">${s.sym}</td><td>${hhmm(s.k)}</td><td class="num">${s.trig ? px(s.trig) : '<span class="mut">aguardando</span>'}</td>
+        <td class="num">${px(s.hi)}</td><td class="num ${risk !== null && risk < 0.02 ? 'neg' : ''}">${risk === null ? '–' : pct(risk)}</td>
+        <td class="num">${s.ncc}/3</td><td class="num">${left} barras</td></tr>`;
+    }), 'nenhum setup ativo');
+
+  // sinais
+  $('n-sig').textContent = st.signals.length;
+  if (st.lastScan) $('scan-info').textContent = `última varredura ${hhmm(st.lastScan.k)} · ${st.lastScan.n} ativos`;
+  table($('signals'), [['Barra'], ['Ativo'], ['Classe'], ['Lado'], ['Corpo', 'num'], ['Vol', 'num'], ['Custo', 'num'], ['Típico', 'num'], ['Decisão'], ['Motivo']],
+    st.signals.map((s) => `<tr><td>${dt(s.k)}</td><td class="sym">${s.sym}</td><td>${clsTag(s.cls)}</td><td>${s.side ? tag(s.side) : '–'}</td>
+      <td class="num">${num(s.body)}×</td><td class="num">${num(s.vr, 1)}×</td><td class="num ${s.cOrder > 0.0015 ? 'neg' : ''}">${pct(s.cOrder, 3)}</td>
+      <td class="num mut">${pct(s.calm, 3)}</td><td>${tag(s.decision)}</td><td class="mut">${s.reason}</td></tr>`), 'nenhum sinal ainda — o primeiro aparece no fechamento de uma barra com pico');
+
+  // candidatos
+  const cands = st.lastScan?.cands || [];
+  table($('cands'), [['#'], ['Ativo'], ['Classe'], ['Barra'], ['Corpo/ATR', 'num'], ['Volume/média', 'num'], ['Liquidez/dia', 'num']],
+    cands.map((c, i) => `<tr><td class="mut">${i + 1}</td><td class="sym">${c.sym}${i < (c2 ? S.config.strategyC2?.topN ?? 2 : 1) ? ' <span class="hot">★</span>' : ''}</td><td>${clsTag(c.cls)}</td>
+      <td>${c.dir > 0 ? tag('short', 'alta → short') : tag('long', 'baixa → long')}</td><td class="num">${num(c.body)}</td><td class="num">${num(c.vr, 1)}</td><td class="num">${usdK(c.liq)}</td></tr>`),
+    'nenhum ativo passou nos filtros na última barra');
+
+  // encerrados
+  $('n-closed').textContent = st.stats.real.n || 0;
+  table($('closed'), [['Saída'], ['Ativo'], ['Classe'], ['Motivo'], ['Entrada', 'num'], ['Saída', 'num'], ['R teórico', 'num'], ['R real', 'num'], ['Slip entr.', 'num'], ['Slip saída', 'num'], ['Funding', 'num'], ['Resultado', 'num']],
+    st.closed.map((c) => `<tr><td>${dt(c.exit_ts)}</td><td class="sym">${c.sym}</td><td>${clsTag(c.cls)}</td><td>${tag(c.why)}</td>
+      <td class="num">${px(c.entry_real)}</td><td class="num">${px(c.exit_real)}</td><td class="num ${cls(c.R_theo_net)}">${R(c.R_theo_net)}</td>
+      <td class="num ${cls(c.R_real)}">${R(c.R_real)}</td><td class="num">${pct(c.slip_entry, 3)}</td><td class="num">${pct(c.slip_exit, 3)}</td>
+      <td class="num ${cls(c.funding_usd)}">${money(c.funding_usd)}</td><td class="num ${cls(c.pnl_real)}">${money(c.pnl_real)}</td></tr>`), 'nenhum trade encerrado ainda');
+  const last = st.closed.slice(0, 30).reverse();
+  rChart.data.labels = last.map((c) => c.sym);
+  rChart.data.datasets[0].data = last.map((c) => c.R_theo_net);
+  rChart.data.datasets[1].data = last.map((c) => c.R_real);
+  rChart.update('none');
+  const gap = r.n && t.n ? r.mean - t.mean : null;
+  const bc = st.stats.byClass;
+  $('exec-stats').innerHTML = [
+    ['Real − teórico', `<span class="${cls(gap)}">${gap === null ? '–' : R(gap)}</span>`],
+    ['Slippage médio entrada', pct(st.stats.slipEntry, 3)],
+    ['Custo médio no sinal', pct(st.stats.costSignal, 3)],
+    ['Desvio-padrão R real', r.n ? num(r.sd) : '–'],
+    ...Object.entries(bc).map(([k, v]) => [`${k === 'acoes' ? 'ações' : k} (${v.n})`, `<span class="${cls(v.R)}">${R(v.R / v.n)}</span> · <span class="${cls(v.pnl)}">${money(v.pnl, 0)}</span>`]),
+  ].map(([a, b]) => `<div class="stat"><span>${a}</span><b>${b}</b></div>`).join('');
+
+  // gravador
+  const rc = S.recorder, w = S.ws;
+  const conns = w ? w.conexoes.map((c) => c.aberta ? '●' : '○').join(' ') : '–';
+  $('rec').innerHTML = [
+    ['Livros prontos', rc ? `${rc.prontos}/${rc.livros}` : '–'],
+    ['Conexões WS', `<span class="${w && w.conexoes.every((c) => c.aberta) ? 'pos' : 'neg'}">${conns}</span> · ${w ? num(w.msgsPorSeg, 0) : '–'} msg/s`],
+    ['Linhas gravadas', rc ? rc.linhas.toLocaleString('pt-BR') : '–'],
+    ['Disco', rc && fin(rc.discoMB) ? num(rc.discoMB, 1) + ' MB' : '–'],
+    ['Ativos quentes (1s)', rc ? rc.quentes.length : '–'],
+    ['Quebras de nonce', rc ? rc.quebrasNonce : '–'],
+    ['Inscrições na fila', w ? w.fila : '–'],
+    ['REST (chamadas/erros)', S.rest ? `${S.rest.chamadas}/${S.rest.erros} · ${num(S.rest.ultimoRefreshSeg, 0)}s` : '–'],
+  ].map(([a, b]) => `<div class="stat"><span>${a}</span><b>${b}</b></div>`).join('') +
+    (rc ? `<div class="stat" style="grid-column:1/-1"><span>Livros prontos</span><div class="bar"><i style="width:${rc.livros ? rc.prontos / rc.livros * 100 : 0}%"></i></div></div>` : '');
+  $('log').innerHTML = S.log.slice().reverse().map((l) => `<div class="${l.level}">${hhmm(l.t)} ${l.level.padEnd(7, ' ')} ${l.msg.replace(/</g, '&lt;')}</div>`).join('');
+}
+
+const mChart = new Chart($('m-equity'), {
+  type: 'line',
+  data: { datasets: [
+    { label: 'Real (livro)', data: [], borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0, tension: .25, fill: true,
+      backgroundColor: (c) => { const g = c.chart.ctx.createLinearGradient(0, 0, 0, c.chart.height); g.addColorStop(0, 'rgba(56,189,248,.28)'); g.addColorStop(1, 'rgba(56,189,248,0)'); return g; } },
+    { label: 'Teórico (backtest)', data: [], borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, tension: .25, borderDash: [4, 4] },
+  ] },
+  options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { type: 'time', grid: { display: false }, time: { tooltipFormat: 'dd/MM HH:mm', minUnit: 'minute',
+        displayFormats: { minute: 'HH:mm', hour: 'dd/MM HH:mm', day: 'dd/MM' } } }, y: { ticks: { callback: (v) => '$' + v.toLocaleString('en-US') } } },
+    plugins: { legend: { labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${money(c.parsed.y)}` } } } },
+});
+
+let tab = 'fade';
+try { tab = localStorage.getItem('tab') || 'fade'; } catch {}
+const TITLES = {
+  fade: ['Fade de pico de volume · Paper Trading', 'Lighter perps · cripto + ações · só short · RR 1,5 · timeout 24h · ½ Kelly'],
+  fadec2: ['Fade C2 · Paper Trading (em paralelo)', 'mesmo fade, com lado/classe/custo filtrados antes do ranking · top 2 · ⅓ Kelly · capital próprio'],
+  mom: ['Momentum 14d ajustado por vol · Paper Trading', 'Lighter perps · só cripto · compra 3 / vende 3 · retorno 14d ÷ vol 30d · holding 7d · ½ Kelly'],
+  trend: ['Força de tendência', 'Lighter perps · todos os ativos · retornos em desvios-padrão · candles 1h'],
+  jev: ['JEV · Paper Trading', 'jev-lighter-trader · top 5 por força de tendência 4h·1d·7d · indicadores 15m e 4h → JEV (TypeSafe) · abre/fecha só com probabilidade > 65% · fecha antes de abrir · 25% do capital por posição'],
+  shadow: ['Modo sombra', 'candidatos rodando ao vivo sem capital · resultado no preço do livro gravado · regras fixadas antes de iniciar'],
+};
+function setTab(v) {
+  tab = v in TITLES ? v : 'fade';
+  try { localStorage.setItem('tab', tab); } catch {}
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === tab));
+  $('v-fade').hidden = tab !== 'fade' && tab !== 'fadec2'; $('v-mom').hidden = tab !== 'mom'; $('v-trend').hidden = tab !== 'trend'; $('v-shadow').hidden = tab !== 'shadow'; $('v-jev').hidden = tab !== 'jev';
+  if (tab === 'trend') loadTrend();
+  if (tab === 'shadow') loadShadow();
+  if (tab === 'jev') loadJev();
+  $('title').textContent = TITLES[tab][0]; $('subtitle').textContent = TITLES[tab][1];
+  render();
+}
+document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => setTab(b.dataset.v));
+
+function renderMom() {
+  const m = S?.momentum;
+  if (!m) { $('m-eq-f').textContent = 'estratégia desligada (config.momentum.enabled)'; return; }
+  const pnl = m.equity - m.startEquity;
+  $('m-eq').textContent = money(m.equity);
+  $('m-eq-f').innerHTML = !m.warm ? 'baixando histórico de 37 dias…' : `caixa ${money(m.cash, 0)} · início ${money(m.startEquity, 0)}`;
+  $('m-pnl').innerHTML = `<span class="${cls(pnl)}">${money(pnl)}</span>`;
+  $('m-pnl-f').innerHTML = `<span class="${cls(pnl)}">${sgn(pnl / m.startEquity * 100, 2, '%')}</span> desde ${dt(m.startedAt)}`;
+  const tp = fin(m.theoEquity) ? m.theoEquity - m.startEquity : null;
+  $('m-theo').innerHTML = `<span class="${cls(tp)}">${money(tp)}</span>`;
+  $('m-theo-f').innerHTML = fin(tp) ? `real − teórico <span class="${cls(pnl - tp)}">${money(pnl - tp)}</span>` : '–';
+  const st = m.stats, p = m.kelly.prior;
+  $('m-ret').innerHTML = st.days ? `<span class="${cls(st.retReal)}">${sgn(st.retReal * 100, 3, '%')}</span>` : '–';
+  $('m-ret-f').textContent = st.days ? `${st.days} dias · teórico ${sgn(st.retTheo * 100, 3, '%')}` :
+    (p ? `backtest ${sgn(p.mean * 100, 3, '%')}/dia a 1× · Sharpe ${num(p.sharpe)}` : '–');
+  $('m-lev').textContent = num(m.gross, 2) + '×';
+  $('m-lev-f').textContent = `meta ${num(m.kelly.grossTarget, 2)}× · Kelly cheio ${num(m.kelly.full, 1)}× · teto ${m.kelly.cap}×`;
+  $('m-dd').innerHTML = `<span class="${m.maxDD < 0 ? 'neg' : ''}">${pct(m.maxDD)}</span>`;
+  $('m-cost').textContent = money(st.costReal);
+  $('m-cost-f').textContent = `teórico ${money(st.costTheo)} · slippage médio ${pct(st.slip, 3)}`;
+  const left = Math.max(0, m.next - S.now);
+  $('m-next').textContent = `${String(Math.floor(left / 3600000)).padStart(2, '0')}h${String(Math.floor(left / 60000) % 60).padStart(2, '0')}`;
+  $('m-next-f').textContent = `${dt(m.next)} · último ${m.lastT ? dt(m.lastT) : '–'}`;
+
+  mChart.data.datasets[0].data = m.curve.map((c) => ({ x: c.t, y: c.real }));
+  mChart.data.datasets[1].data = m.curve.map((c) => ({ x: c.t, y: c.theo }));
+  mChart.update('none');
+  $('m-curve-info').textContent = `${m.curve.length} pontos`;
+
+  const rk = m.ranking;
+  $('m-rank-info').textContent = rk ? `${dt(rk.T)} · ${rk.eligible} elegíveis` : 'aguardando o primeiro rebalanceamento';
+  const card = (x) => `<div class="rk"><span class="sym">${x.sym}</span><span class="sub2">${sgn(x.r * 100, 1, '%')} · vol ${pct(x.vol, 1)}</span><span class="k ${cls(x.key)}">${sgn(x.key, 2)}</span></div>`;
+  $('m-long').innerHTML = rk?.long?.length ? rk.long.map(card).join('') : '<div class="empty">–</div>';
+  $('m-short').innerHTML = rk?.short?.length ? rk.short.map(card).join('') : '<div class="empty">–</div>';
+
+  $('m-n-pos').textContent = m.positions.length;
+  $('m-pos-info').textContent = m.positions.length ? `bruto ${money(m.positions.reduce((a, q) => a + Math.abs(q.notional), 0), 0)}` : '';
+  const maxW = Math.max(0.01, ...m.positions.map((q) => Math.max(Math.abs(q.weight), Math.abs(q.target))));
+  table($('m-pos'), [['Ativo'], ['Lado'], ['Notional', 'num'], ['Atual × meta'], ['Peso', 'num'], ['Meta', 'num'], ['Preço médio', 'num'], ['Preço', 'num'], ['Resultado', 'num'], ['Funding', 'num']],
+    m.positions.map((q) => {
+      const wpx = Math.abs(q.weight) / maxW * 50, tpx = 50 + q.target / maxW * 50;
+      return `<tr><td class="sym">${q.sym}</td><td>${tag(q.side)}</td><td class="num">${money(Math.abs(q.notional), 0)}</td>
+      <td><div class="wbar"><i class="${q.weight > 0 ? 'l' : 's'}" style="width:${wpx}%"></i><b style="left:calc(${tpx}% - 1px)"></b></div></td>
+      <td class="num ${cls(q.weight)}">${sgn(q.weight * 100, 1, '%')}</td><td class="num mut">${sgn(q.target * 100, 1, '%')}</td>
+      <td class="num">${px(q.avg)}</td><td class="num">${px(q.mid)}</td><td class="num ${cls(q.upnl)}">${money(q.upnl)}</td><td class="num ${cls(q.funding)}">${money(q.funding)}</td></tr>`;
+    }), m.warm ? 'sem posições — aguardando o rebalanceamento' : 'baixando histórico de candles (37 dias, só cripto)…');
+
+  $('m-n-reb').textContent = m.rebalances.length;
+  table($('m-reb'), [['Data'], ['Compra'], ['Vende'], ['Bruto', 'num'], ['Giro', 'num'], ['Custo', 'num'], ['Custo teo.', 'num'], ['Dia real', 'num'], ['Dia teo.', 'num']],
+    m.rebalances.map((r) => `<tr><td>${dt(r.T)}${r.late_min > 30 ? ' <span class="hot" title="executado atrasado">●</span>' : ''}</td><td class="pos">${r.long || '–'}</td><td class="neg">${r.short || '–'}</td>
+      <td class="num">${num(r.gross, 2)}×</td><td class="num">${money(r.turnover_usd, 0)}</td><td class="num">${money(r.cost_real_usd)}</td><td class="num mut">${money(r.cost_theo_usd)}</td>
+      <td class="num ${cls(r.ret_real)}">${fin(r.ret_real) ? sgn(r.ret_real * 100, 2, '%') : '–'}</td><td class="num ${cls(r.ret_theo)}">${fin(r.ret_theo) ? sgn(r.ret_theo * 100, 2, '%') : '–'}</td></tr>`),
+    'nenhum rebalanceamento ainda');
+
+  const all = rk?.all || [];
+  $('m-n-rank').textContent = all.length;
+  const L = new Set((rk?.long || []).map((x) => x.sym)), Sh = new Set((rk?.short || []).map((x) => x.sym));
+  table($('m-rank'), [['#'], ['Ativo'], ['Chave', 'num'], ['Retorno 14d', 'num'], ['Vol 30d', 'num'], ['Liquidez/dia', 'num'], ['']],
+    all.map((x, i) => `<tr><td class="mut">${i + 1}</td><td class="sym">${x.sym}</td><td class="num ${cls(x.key)}">${sgn(x.key, 2)}</td>
+      <td class="num ${cls(x.r)}">${sgn(x.r * 100, 1, '%')}</td><td class="num">${pct(x.vol, 1)}</td><td class="num">${usdK(x.liq)}</td>
+      <td>${L.has(x.sym) ? tag('long', 'compra') : Sh.has(x.sym) ? tag('short', 'vende') : ''}</td></tr>`), 'aguardando o primeiro rebalanceamento');
+
+  $('m-n-fills').textContent = m.fills.length;
+  $('m-fill-info').textContent = fin(st.slip) ? `slippage médio ${pct(st.slip, 3)} (ponderado por US$)` : '';
+  table($('m-fills'), [['Hora'], ['Ativo'], ['Lado'], ['Valor', 'num'], ['Preço', 'num'], ['Mid', 'num'], ['Slippage', 'num'], ['Custo livro', 'num']],
+    m.fills.map((f) => `<tr><td>${dt(f.ts)}</td><td class="sym">${f.sym}</td><td>${tag(f.side === 'buy' ? 'long' : 'short', f.side === 'buy' ? 'compra' : 'venda')}</td>
+      <td class="num">${money(f.usd, 0)}</td><td class="num">${px(f.px)}</td><td class="num mut">${px(f.mid)}</td>
+      <td class="num ${f.slip > 0.0015 ? 'neg' : ''}">${pct(f.slip, 3)}${f.complete ? '' : ' <span class="hot" title="livro raso: execução parcial">!</span>'}</td><td class="num mut">${pct(f.cost_book, 3)}</td></tr>`),
+    'nenhuma execução ainda');
+}
+
+function renderCosts() {
+  const q = $('q').value.trim().toUpperCase();
+  const rows = COSTS.filter((c) => (clsFilter === 'all' || (clsFilter === 'hot' ? c.hot : c.cls === clsFilter)) && (!q || c.sym.includes(q)))
+    .sort((a, b) => (b.hot - a.hot) || ((a.c1k ?? 9) - (b.c1k ?? 9)));
+  const lim = (x) => fin(x) && x > 0.0015 ? 'neg' : fin(x) ? 'pos' : 'mut';
+  table($('costs'), [['Ativo'], ['Classe'], ['Spread', 'num'], ['US$1k', 'num'], ['US$5k', 'num'], ['US$20k', 'num'], ['Típico 24h', 'num'], ['Agora/típico', 'num'], ['Atualizado', 'num']],
+    rows.map((c) => `<tr><td class="sym">${c.hot ? '<span class="hot">●</span> ' : ''}${c.sym}</td><td>${clsTag(c.cls)}</td><td class="num">${pct(c.spread, 3)}</td>
+      <td class="num ${lim(c.c1k)}">${pct(c.c1k, 3)}</td><td class="num ${lim(c.c5k)}">${pct(c.c5k, 3)}</td><td class="num ${lim(c.c20k)}">${pct(c.c20k, 3)}</td>
+      <td class="num mut">${pct(c.calm, 3)}</td><td class="num">${fin(c.c1k) && fin(c.calm) && c.calm > 0 ? num(c.c1k / c.calm, 2) + '×' : '–'}</td><td class="num mut">${ago(Date.now() - c.age)}</td></tr>`),
+    'livros ainda carregando…');
+  const by = {};
+  for (const c of COSTS) if (fin(c.c1k)) (by[c.cls] ??= []).push(c.c1k);
+  $('cls-costs').innerHTML = Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([k, v]) => {
+    v.sort((a, b) => a - b);
+    const med = v[Math.floor(v.length / 2)], ok = v.filter((x) => x <= 0.0015).length;
+    return `<div class="stat" style="margin-bottom:10px"><span>${k === 'acoes' ? 'ações' : k} · ${v.length} livros · ${ok} com custo ≤ 0,15%</span>
+      <b>${pct(med, 3)}</b><div class="bar"><i style="width:${Math.min(100, med / 0.005 * 100)}%"></i></div></div>`;
+  }).join('');
+}
+
+document.querySelectorAll('#cls-seg button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('#cls-seg button').forEach((x) => x.classList.remove('on'));
+  b.classList.add('on'); clsFilter = b.dataset.v; renderCosts();
+});
+$('q').oninput = renderCosts;
+
+setInterval(() => {
+  const now = Date.now();
+  $('clock').textContent = new Date(now).toISOString().slice(11, 19) + ' UTC';
+  if (nextBar) { const s = Math.max(0, Math.floor((nextBar - now) / 1000)); $('countdown').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
+}, 250);
+
+// ---------------------------------------------------------------- tendência
+let TR = null, tCls = 'all', tLiq = 500000, tSort = 'abs', tDir = -1, tSet = 'longo';
+try { tSet = localStorage.getItem('tSet') === 'curto' ? 'curto' : 'longo'; } catch {}
+const SET_INFO = {
+  longo: { h: ['1d', '7d', '30d'], fit: '7d', spark: '7d (4h)', info: 'médio prazo · R² e eficiência em 7d · gráfico de 7d' },
+  curto: { h: ['4h', '1d', '7d'], fit: '1d', spark: '48h (1h)', info: 'curto prazo · R² e eficiência em 1d · gráfico de 48h' },
+};
+const CLS_NAME = { cripto: 'cripto', acoes: 'ações', etf_indice: 'índices/ETF', commodities: 'commodities', forex: 'forex', pre_ipo: 'pré-IPO' };
+const tLabel = (s) => s >= 40 ? tag('forte-alta', 'alta forte') : s >= 20 ? tag('alta', 'alta') : s <= -40 ? tag('forte-baixa', 'baixa forte') : s <= -20 ? tag('baixa', 'baixa') : tag('lateral', 'lateral');
+const tBar = (s) => `<span class="tbar"><i style="${s >= 0 ? 'left:50%' : 'right:50%'};width:${Math.min(50, Math.abs(s) / 2)}%;background:${s >= 0 ? 'var(--green)' : 'var(--red)'}"></i></span><span class="tscore ${cls(s)}">${sgn(s, 0)}</span>`;
+const spark = (xs, w = 110, h = 26) => {
+  if (!xs || xs.length < 2) return '';
+  const lo = Math.min(...xs), hi = Math.max(...xs), r = hi - lo || 1;
+  const pts = xs.map((v, i) => `${(i / (xs.length - 1) * w).toFixed(1)},${(h - 2 - (v - lo) / r * (h - 4)).toFixed(1)}`).join(' ');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${xs.at(-1) >= xs[0] ? '#22c55e' : '#f43f5e'}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+};
+let tLag = 0, tSeq = 0, tLagTimer = null;
+async function loadTrend() {
+  const seq = ++tSeq;
+  try {
+    const d = await (await fetch(`/api/trend?lag=${tLag}`)).json();
+    if (seq === tSeq) { TR = d; renderTrend(); } // ignora respostas de um atraso ja trocado
+  } catch {}
+}
+const lagTxt = (n) => n === 0 ? 'agora' : `${Math.floor(n / 4) ? Math.floor(n / 4) + 'h' : ''}${n % 4 ? String(n % 4 * 15).padStart(Math.floor(n / 4) ? 2 : 1, '0') + 'min' : ''} atrás`;
+function setLag(n) {
+  tLag = Math.max(0, Math.min(288, n));
+  $('t-lag').value = tLag;
+  $('t-lag-v').textContent = lagTxt(tLag);
+  $('t-lagbox').classList.toggle('on', tLag > 0);
+  clearTimeout(tLagTimer);
+  tLagTimer = setTimeout(loadTrend, 150);
+}
+$('t-lag').oninput = (e) => setLag(+e.target.value);
+document.querySelectorAll('#t-lagbox button[data-d]').forEach((b) => b.onclick = () => setLag(tLag + +b.dataset.d));
+$('t-lag-0').onclick = () => setLag(0);
+setInterval(() => { if (tab === 'trend') loadTrend(); }, 60_000);
+// [titulo, chave de ordenacao, classe]; chave 'score' alterna |força| ↓ → força ↓ → força ↑
+const tCols = (I) => [
+  ['Ativo', 'sym'], ['Classe', 'cls'], ['Força', 'score', 'num'], [''], [I.spark], ['Alinh.', 'align', 'num'],
+  ...I.h.map((h, i) => [`z ${h}`, `z${i}`, 'num']), ...I.h.map((h, i) => [`Ret. ${h}`, `ret${i}`, 'num']),
+  [`R² ${I.fit}`, 'r2', 'num'], [`Efic. ${I.fit}`, 'er', 'num'], ['Vol anual', 'vol', 'num'], ['Volume 24h', 'vol24', 'num'], ['Preço', 'price', 'num'],
+];
+function tCmp(a, b) {
+  const x = tSort === 'abs' ? Math.abs(a.score) : a[tSort], y = tSort === 'abs' ? Math.abs(b.score) : b[tSort];
+  if (typeof x === 'string') return tDir * x.localeCompare(y);
+  const fx = fin(x), fy = fin(y);
+  if (!fx || !fy) return fx === fy ? 0 : fx ? -1 : 1; // vazios sempre no fim
+  return tDir * (x - y);
+}
+function renderTrend() {
+  if (!TR) return;
+  const I = SET_INFO[tSet];
+  $('t-set-info').textContent = I.info;
+  const utc = (t) => new Date(t).toISOString().slice(5, 16).replace('T', ' ').replace(/^(\d+)-(\d+)/, '$2/$1') + ' UTC';
+  $('t-lag-at').innerHTML = TR.T ? `estado em <b style="color:${TR.lag ? 'var(--amber)' : 'var(--text)'}">${utc(TR.T)}</b>` : '';
+  document.querySelectorAll('#t-set button').forEach((b) => b.classList.toggle('on', b.dataset.v === tSet));
+  const all = (TR.rows || []).filter((r) => r.sets?.[tSet]).map((r) => {
+    const x = r.sets[tSet];
+    return { ...r, ...x, z0: x.z[0], z1: x.z[1], z2: x.z[2], ret0: x.r[0], ret1: x.r[1], ret2: x.r[2] };
+  });
+  if (!all.length) {
+    $('t-n').textContent = '…'; $('t-n-f').textContent = TR.busy ? 'baixando candles de 1h (cerca de 4 min)…' : 'sem dados';
+    table($('t-table'), [], [], 'baixando candles de 1h…'); return;
+  }
+  const liq = all.filter((r) => r.vol24 >= 500000);
+  const mean = (xs) => xs.length ? xs.reduce((a, v) => a + v, 0) / xs.length : null;
+  const cnt = (f) => all.filter(f).length;
+  $('t-n').textContent = all.length;
+  $('t-n-f').textContent = `${liq.length} com volume ≥ $500k · ${TR.lag ? 'estado de ' + lagTxt(TR.lag) : 'última barra 15m'}${TR.busy ? ' · atualizando 1h…' : ''}`;
+  $('t-up').textContent = cnt((r) => r.score >= 40); $('t-up-f').textContent = `${cnt((r) => r.score >= 20)} com força ≥ +20`;
+  $('t-dn').textContent = cnt((r) => r.score <= -40); $('t-dn-f').textContent = `${cnt((r) => r.score <= -20)} com força ≤ −20`;
+  const flat = cnt((r) => Math.abs(r.score) < 20);
+  $('t-flat').textContent = flat; $('t-flat-f').textContent = `${pct(flat / all.length, 0)} dos ativos`;
+  const cr = all.filter((r) => r.cls === 'cripto'), crm = mean(cr.map((r) => r.score));
+  $('t-cr').innerHTML = `<span class="${cls(crm)}">${sgn(crm, 0)}</span>`;
+  $('t-cr-f').textContent = `${cr.length} perps · ${pct(cr.filter((r) => r.score > 0).length / (cr.length || 1), 0)} positivos`;
+  const by = Object.fromEntries(all.map((r) => [r.sym, r])), b = by.BTC, e = by.ETH;
+  $('t-btc').innerHTML = `<span class="${cls(b?.score)}">${sgn(b?.score, 0)}</span> <span class="mut">/</span> <span class="${cls(e?.score)}">${sgn(e?.score, 0)}</span>`;
+  $('t-btc-f').textContent = b && e ? `${I.h[1]}: BTC ${sgn(b.ret1 * 100, 1, '%')} · ETH ${sgn(e.ret1 * 100, 1, '%')}` : '–';
+
+  const card = (r) => `<div class="rk"><span class="sym" style="min-width:70px">${r.sym}</span>${clsTag(r.cls)}${spark(r.spark, 90, 22)}
+    <span class="sub2">${I.h[1]} ${sgn(r.ret1 * 100, 1, '%')} · R² ${num(r.r2)}</span><span class="k ${cls(r.score)}">${sgn(r.score, 0)}</span></div>`;
+  const srt = liq.slice().sort((a, c) => c.score - a.score);
+  $('t-top-up').innerHTML = srt.filter((r) => r.score > 0).slice(0, 8).map(card).join('') || '<div class="empty">nenhum</div>';
+  $('t-top-dn').innerHTML = srt.filter((r) => r.score < 0).reverse().slice(0, 8).map(card).join('') || '<div class="empty">nenhum</div>';
+
+  const groups = {};
+  for (const r of all) (groups[r.cls] ??= []).push(r);
+  $('t-breadth').innerHTML = Object.entries(groups).sort((a, c) => c[1].length - a[1].length).map(([k, v]) => {
+    const n = v.length, up = v.filter((r) => r.score >= 20).length, dn = v.filter((r) => r.score <= -20).length, m = mean(v.map((r) => r.score));
+    return `<div class="stat" style="margin-bottom:12px"><span>${CLS_NAME[k] ?? k} · ${n} ativos · média <b class="${cls(m)}" style="font-size:11px">${sgn(m, 0)}</b></span>
+      <b style="font-size:12px"><span class="pos">${up} alta</span> · <span class="mut">${n - up - dn} lateral</span> · <span class="neg">${dn} baixa</span></b>
+      <div class="breadth"><i style="width:${up / n * 100}%;background:var(--green)"></i><i style="width:${(n - up - dn) / n * 100}%;background:rgba(148,163,184,.25)"></i><i style="width:${dn / n * 100}%;background:var(--red)"></i></div></div>`;
+  }).join('');
+
+  const q = $('t-q').value.trim().toUpperCase();
+  const rows = all.filter((r) => (tCls === 'all' || r.cls === tCls) && r.vol24 >= tLiq && (!q || r.sym.includes(q))).sort(tCmp);
+  $('t-count').textContent = rows.length;
+  const zc = (z) => `<td class="num ${Math.abs(z) >= 2 ? cls(z) : 'mut'}">${sgn(z, 1)}</td>`;
+  const rc = (x) => `<td class="num ${cls(x)}">${sgn(x * 100, 1, '%')}</td>`;
+  const arrow = (k) => k === 'score' && tSort === 'abs' ? ' |↓|' : k === tSort ? (tDir < 0 ? ' ↓' : ' ↑') : '';
+  const el = $('t-table');
+  el.innerHTML = `<thead><tr>${tCols(I).map(([h, k, c]) => `<th class="${c || ''}${k ? ' sortable' : ''}${arrow(k) ? ' sorted' : ''}" data-k="${k || ''}">${h}${arrow(k)}</th>`).join('')}</tr></thead><tbody>${
+    rows.length ? rows.map((r) => `<tr><td class="sym">${r.sym}</td><td>${clsTag(r.cls)}</td><td class="num">${tBar(r.score)}</td><td>${tLabel(r.score)}</td>
+      <td>${spark(r.spark)}</td><td class="num">${r.align}/${r.nz}</td>${zc(r.z0)}${zc(r.z1)}${zc(r.z2)}${rc(r.ret0)}${rc(r.ret1)}${rc(r.ret2)}
+      <td class="num">${num(r.r2)}</td><td class="num">${num(r.er)}</td><td class="num">${pct(r.vol, 0)}</td><td class="num">${usdK(r.vol24)}</td><td class="num">${px(r.price)}</td></tr>`).join('')
+    : '<tr><td colspan="99" class="empty">nenhum ativo com esses filtros</td></tr>'}</tbody>`;
+  el.querySelectorAll('th.sortable').forEach((th) => th.onclick = () => {
+    const k = th.dataset.k;
+    if (k === 'score') [tSort, tDir] = tSort === 'abs' ? ['score', -1] : tSort === 'score' && tDir < 0 ? ['score', 1] : ['abs', -1];
+    else if (k === tSort) tDir = -tDir;
+    else { tSort = k; tDir = k === 'sym' || k === 'cls' ? 1 : -1; }
+    renderTrend();
+  });
+}
+const segPick = (id, f) => document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => {
+  document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.remove('on')); b.classList.add('on'); f(b.dataset.v); renderTrend();
+});
+segPick('t-cls', (v) => { tCls = v; });
+document.querySelectorAll('#t-set button').forEach((b) => b.onclick = () => {
+  tSet = b.dataset.v;
+  try { localStorage.setItem('tSet', tSet); } catch {}
+  renderTrend();
+});
+segPick('t-liq', (v) => { tLiq = +v; });
+$('t-q').oninput = renderTrend;
+
+function connect() {
+  const es = new EventSource('/api/stream');
+  es.addEventListener('state', (e) => { S = JSON.parse(e.data); render(); });
+  es.addEventListener('costs', (e) => { COSTS = JSON.parse(e.data); renderCosts(); });
+  es.onerror = () => { $('status').className = 'pill'; $('status').lastElementChild.textContent = 'reconectando…'; };
+}
+// ---------------------------------------------------------------- modo sombra
+let SH = null;
+const bp = (x, d = 1) => fin(x) ? `<span class="${cls(x)}">${sgn(x, d)}bp</span>` : '–';
+const STRAT_NAME = { capitulacao: 'Capitulação', overnight: 'Overnight', rsi2: 'RSI(2)', fds_acoes: 'Fim de semana ações', fade_tbf: 'Fade × fluxo', fade_mom: 'Fade × momentum', mom_esticado: 'Momentum s/ esticados' };
+async function loadShadow() { try { SH = await (await fetch('/api/shadow')).json(); renderShadow(); } catch (e) { console.error(e); } }
+setInterval(() => { if (tab === 'shadow') loadShadow(); }, 30_000);
+const capChart = new Chart($('s-cap'), {
+  type: 'line', data: { datasets: [{ label: '% ≤ −80', data: [], borderColor: '#f43f5e', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(244,63,94,.12)' },
+    { label: 'gatilho 35%', data: [], borderColor: '#8a96ad', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }] },
+  options: { maintainAspectRatio: false, animation: false, scales: { x: { type: 'time', grid: { display: false }, time: { displayFormats: { hour: 'dd/MM HH:mm', day: 'dd/MM' } } },
+    y: { min: 0, suggestedMax: 0.5, ticks: { callback: (v) => (v * 100).toFixed(0) + '%' } } }, plugins: { legend: { labels: { boxWidth: 12, usePointStyle: true } } } },
+});
+function renderShadow() {
+  const v = SH;
+  if (!v) { table($('s-sum'), [], [], 'modo sombra desligado ou iniciando…'); return; }
+  const nx = v.next;
+  $('s-info').textContent = `desde ${dt(v.startedAt)} · próximos: overnight ${dt(nx.overnight)} · fim de semana ${dt(nx.fds)}`;
+  const t = v.tbf, m = v.mom;
+  const note = (txt) => `<td class="mut" style="white-space:normal;font-size:12px;min-width:260px">${txt}</td>`;
+  const name = (k, sec) => `<td><b>${STRAT_NAME[k]}</b><div class="mut" style="font-size:11px">seção ${sec}</div></td>`;
+  const rows = [
+    `<tr>${name('fade_tbf', t.secao)}<td class="num">${t.n} sinais</td><td class="num">${t.binance.nHi + t.binance.nLo} fechados</td>
+      <td class="num" colspan="3">tbf B ≥ ${num(t.corte)}: ${R(t.binance.RHi)} (${t.binance.nHi}) · &lt; ${num(t.corte)}: ${R(t.binance.RLo)} (${t.binance.nLo})</td>
+      <td class="num">–</td><td class="num">–</td><td class="num">–</td>${note(t.regra)}</tr>`,
+    (() => { const f = v.fadeMom; if (!f) return ''; const gg = (k) => `${k} ${R(f.g[k].R)} (${f.g[k].n})`;
+      return `<tr>${name('fade_mom', f.secao)}<td class="num">${f.n} sinais</td><td class="num">${f.closed} fechados</td>
+      <td class="num" colspan="3">${gg('oposto')} · ${gg('fora')} · ${gg('mesmo')}</td><td class="num">–</td><td class="num">–</td>
+      <td class="num">${f.closed ? `${num(f.sumVar - f.sumBase, 2)}R` : '–'}</td>${note(f.regra)}</tr>`; })(),
+    `<tr>${name('mom_esticado', m.secao)}<td class="num">${m.days} dias</td><td class="num">${m.exclDays} c/ exclusão</td><td class="num">${bp(m.str)}</td><td class="num mut">base ${bp(m.base)}</td>
+      <td class="num">Δ ${bp(m.diff)}/dia</td><td class="num">–</td><td class="num">${fin(m.diffT) ? num(m.diffT, 1) : '–'}</td><td class="num">${bp(m.sumStr - m.sumBase, 0)}</td>${note(m.regra)}</tr>`,
+    ...['overnight', 'fds_acoes', 'rsi2', 'capitulacao'].map((k) => { const x = v.strat[k];
+      return `<tr>${name(k, x.secao)}<td class="num">${x.events} ev. · ${x.n} pernas</td><td class="num">${x.open} abertas</td>
+        <td class="num">${bp(x.evMid)}</td><td class="num">${bp(x.ev1k)}</td><td class="num">${bp(x.bp5k)}</td>
+        <td class="num mut">${fin(x.cost) ? num(x.cost, 1) + 'bp' : '–'}${fin(x.calm) ? ' · típico ' + num(x.calm, 1) : ''}</td>
+        <td class="num">${fin(x.evT) ? num(x.evT, 1) : '–'}</td><td class="num">${bp(x.sumEv1k, 0)}</td>${note(x.regra)}</tr>`; }),
+  ];
+  table($('s-sum'), [['Candidato'], ['Amostra', 'num'], ['', 'num'], ['Média mid', 'num'], ['Média US$1k', 'num'], ['US$5k', 'num'], ['Custo entrada', 'num'], ['t', 'num'], ['Soma US$1k', 'num'], ['Regra']], rows, '');
+
+  // B3
+  const g = (x, lbl) => `<div class="stat"><span>${lbl}</span><b>${R(x.RHi)} <span class="mut">(${x.nHi})</span> × ${R(x.RLo)} <span class="mut">(${x.nLo})</span></b></div>`;
+  $('s-tbf-info').textContent = `${t.n} sinais marcados`;
+  $('s-tbf-stats').innerHTML = g(t.binance, `R real, tbf Binance ≥ ${num(t.corte)} × &lt; ${num(t.corte)}`) + g(t.lighter, `R real, tbf Lighter ≥ ${num(t.corte)} × &lt; ${num(t.corte)}`) +
+    `<div class="stat"><span>correlação tbf Lighter × Binance</span><b>${fin(t.corr) ? num(t.corr, 2) : '–'} <span class="mut">(${t.nBoth} barras)</span></b></div>
+     <div class="stat"><span>tbf médio nos sinais</span><b>L ${num(t.medL)} · B ${num(t.medB)}</b></div>`;
+  const tb = (x) => fin(x) ? `<span class="${x >= t.corte ? 'neg' : ''}">${num(x)}</span>` : '–';
+  table($('s-tbf'), [['Barra'], ['Inst.'], ['Ativo'], ['tbf Lighter', 'num'], ['tbf Binance', 'num'], ['Momentum'], ['Decisão'], ['R real', 'num']],
+    t.rows.map((r) => `<tr><td class="mut">${dt(r.k)}</td><td>${r.inst}</td><td><b>${r.sym}</b></td><td class="num">${tb(r.tbfL)}${r.complete ? '' : ' <span class="mut" title="app iniciou no meio da barra">*</span>'}</td>
+      <td class="num">${tb(r.tbfB)}</td><td class="${r.rel === 'oposto' ? 'pos' : 'mut'}">${r.rel ?? '–'}</td><td class="mut">${r.decision}</td><td class="num ${cls(r.R)}">${fin(r.R) ? R(r.R) : '–'}</td></tr>`),
+    'nenhum sinal do fade desde o início da sombra');
+
+  // momentum
+  $('s-mom-info').textContent = `limite ${num(m.g, 1)}·σ·√${m.L} · 1× bruto`;
+  $('s-mom-stats').innerHTML = `<div class="stat"><span>média diária</span><b>${bp(m.str)} × base ${bp(m.base)}</b></div>
+    <div class="stat"><span>diferença média</span><b>${bp(m.diff)}/dia ${fin(m.diffT) ? '<span class="mut">t ' + num(m.diffT, 1) + '</span>' : ''}</b></div>
+    <div class="stat"><span>dias com exclusão</span><b>${m.exclDays} de ${m.days}</b></div>`;
+  table($('s-mom'), [['Dia'], ['Excluídos'], ['Compra'], ['Vende'], ['Base', 'num'], ['Variante', 'num'], ['Δ', 'num']],
+    m.daily.map((d) => `<tr><td class="mut">${dt(d.T)}</td><td>${d.excl.join(', ') || '<span class="mut">–</span>'}</td><td>${d.long.join(', ')}</td><td>${d.short.join(', ')}</td>
+      <td class="num">${bp(d.base)}</td><td class="num">${bp(d.str)}</td><td class="num">${bp(d.diff)}</td></tr>`),
+    'aguardando o primeiro rebalanceamento (00:00 UTC)');
+
+  // posicoes
+  $('s-n-pos').textContent = v.pos.length;
+  table($('s-pos'), [['Candidato'], ['Ativo'], ['Lado'], ['Entrada'], ['Sai em'], ['Mid entrada', 'num'], ['Agora', 'num'], ['Resultado mid', 'num'], ['Funding', 'num'], ['Info']],
+    v.pos.map((p) => `<tr><td>${STRAT_NAME[p.strat]}</td><td><b>${p.sym}</b></td><td>${p.d > 0 ? 'long' : 'short'}</td><td class="mut">${dt(p.openTs)}</td><td class="mut">${p.exitAt ? dt(p.exitAt) : 'pela regra'}</td>
+      <td class="num">${px(p.midIn)}</td><td class="num">${px(p.midNow)}</td><td class="num">${bp(p.bpMid)}</td><td class="num">${bp(p.fundBp, 2)}</td><td class="mut">${p.info || ''}</td></tr>`),
+    'nenhuma posição sombra aberta');
+
+  // capitulacao + rsi
+  const c = v.cap;
+  $('s-cap-info').textContent = c.pending ? `evento! compra em ${dt(c.pending.entryAt)}` : c.last ? `último evento ${dt(c.last)}` : 'sem evento';
+  capChart.data.datasets[0].data = c.hist.map((h) => ({ x: h.T, y: h.frac }));
+  capChart.data.datasets[1].data = c.hist.length ? [{ x: c.hist[0].T, y: c.frac }, { x: c.hist.at(-1).T, y: c.frac }] : [];
+  capChart.update('none');
+  $('s-rsi').innerHTML = Object.entries(v.rsi).map(([s, r]) => `<div class="stat"><span>${s} · ${r.date} · ${r.n} fechamentos</span><b class="${r.rsi < 10 ? 'pos' : r.rsi > 70 ? 'neg' : ''}">${fin(r.rsi) ? num(r.rsi, 0) : '–'}</b></div>`).join('')
+    || '<div class="empty">primeiro cálculo no fechamento das 16:00 ET</div>';
+
+  $('s-n-closed').textContent = v.closed.length;
+  table($('s-closed'), [['Saída'], ['Candidato'], ['Ativo'], ['Lado'], ['Motivo'], ['Mid', 'num'], ['US$1k', 'num'], ['US$5k', 'num'], ['Funding', 'num'], ['Custo entrada', 'num'], ['Info']],
+    v.closed.map((x) => `<tr><td class="mut">${dt(x.closeTs)}</td><td>${STRAT_NAME[x.strat]}</td><td><b>${x.sym}</b></td><td>${x.side}</td><td class="mut">${x.why}</td><td class="num">${bp(x.bp_mid)}</td>
+      <td class="num">${bp(x.bp_1k)}</td><td class="num">${bp(x.bp_5k)}</td><td class="num">${bp(x.funding_bp, 2)}</td><td class="num mut">${fin(x.cost1k_in) ? num(x.cost1k_in * 1e4, 1) + 'bp' : '–'}</td><td class="mut">${x.info || ''}</td></tr>`),
+    'nenhum trade sombra fechado ainda');
+}
+
+// ---------------------------------------------------------------- JEV
+let JV = null;
+async function loadJev() { try { JV = await (await fetch('/api/jev')).json(); renderJev(); } catch (e) { console.error(e); } }
+setInterval(() => { if (tab === 'jev') loadJev(); }, 20_000);
+const jChart = new Chart($('j-chart'), {
+  type: 'line', data: { datasets: [{ label: 'Capital', data: [], borderColor: '#a78bfa', borderWidth: 2, pointRadius: 0, tension: .2, fill: true, backgroundColor: 'rgba(167,139,250,.12)' },
+    { label: 'Inicial', data: [], borderColor: '#8a96ad', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }] },
+  options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { type: 'time', grid: { display: false }, time: { tooltipFormat: 'dd/MM HH:mm', displayFormats: { minute: 'HH:mm', hour: 'dd/MM HH:mm', day: 'dd/MM' } } },
+      y: { ticks: { callback: (v) => '$' + v.toLocaleString('en-US') } } },
+    plugins: { legend: { labels: { boxWidth: 12, usePointStyle: true } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${money(c.parsed.y)}` } } } },
+});
+const pp = (x) => fin(x) ? (x * 100).toFixed(0) + '%' : '–';
+const sideTag = (s) => s === 'long' ? tag('long', 'long') : s === 'short' ? tag('short', 'short') : s ? `<span class="tag t-other">${s}</span>` : '–';
+function renderJev() {
+  const v = JV;
+  if (!v) { table($('j-pos'), [], [], 'JEV desligado ou iniciando…'); return; }
+  $('j-eq').textContent = money(v.equity); $('j-eq-f').textContent = `início ${money(v.initial, 0)} · desde ${dt(v.startedAt)}`;
+  $('j-pnl').innerHTML = `<span class="${cls(v.pnl)}">${money(v.pnl)}</span>`; $('j-pnl-f').textContent = sgn(v.pnl / v.initial * 100, 2, '%');
+  $('j-n').textContent = v.trades; $('j-n-f').textContent = `${v.longs} long · ${v.shorts} short · média ${sgn(v.avgPct * 100, 2, '%')}`;
+  $('j-win').textContent = pct(v.winRate, 0); $('j-win-f').textContent = `soma realizada ${money(v.sumUsd)}`;
+  $('j-dd').innerHTML = `<span class="${v.dd < 0 ? 'neg' : ''}">${pct(v.dd, 1)}</span>`;
+  $('j-calls').textContent = v.calls; $('j-calls-f').textContent = `${v.errors} erros · ${(v.inputTokens / 1e3).toFixed(0)}k tokens · US$ ${v.cost.toFixed(4)}`;
+  $('j-info').textContent = v.lastBar ? `última barra ${dt(v.lastBar - 900000)}${v.busy ? ' · consultando…' : ''}` : 'aguardando a primeira barra';
+  jChart.data.datasets[0].data = v.curve.map((x) => ({ x: x.t, y: x.eq }));
+  jChart.data.datasets[1].data = v.curve.length ? [{ x: v.curve[0].t, y: v.initial }, { x: v.curve.at(-1).t, y: v.initial }] : [];
+  jChart.update('none');
+  const lastDec = (sym) => v.decisions.find((d) => d.sym === sym && d.bar === v.lastBar);
+  $('j-top-t').textContent = `Top ${v.cfg.topN} por força 4h · 1d · 7d`;
+  $('j-top-info').textContent = `abre/fecha com p > ${pp(v.cfg.minProb)} · volume 24h ≥ ${usdK(v.cfg.liqMinUSD)} · ranking por ${v.cfg.rank === 'abs' ? '|força|' : 'força'}`;
+  $('j-top').innerHTML = v.top.length ? v.top.map((r) => {
+    const d = lastDec(r.sym);
+    const ans = !d ? '<span class="mut">–</span>' : d.error ? `<span class="neg">${d.error}</span>`
+      : d.kind === 'hold' ? `em posição · manter ${pp(d.p_keep)} · fechar ${pp(d.p_close)}`
+      : `${sideTag(d.choice)} <span class="mut">long ${pp(d.p_long)} · short ${pp(d.p_short)} · skip ${pp(d.p_skip)}</span>`;
+    return `<div class="rk"><span class="sym" style="min-width:80px">#${r.rank} ${r.sym}</span>${clsTag(r.cls)}<span class="sub2">4h ${sgn(r.r[0] * 100, 1, '%')} · 1d ${sgn(r.r[1] * 100, 1, '%')} · 7d ${sgn(r.r[2] * 100, 1, '%')}</span>
+      <span class="k ${cls(r.score)}">${sgn(r.score, 0)}</span></div><div style="margin:-4px 0 10px 4px;font-size:12px">${ans}</div>`;
+  }).join('') : '<div class="empty">aguardando a primeira barra (precisa da tendência carregada)</div>';
+  $('j-n-pos').textContent = v.pos.length;
+  table($('j-pos'), [['Ativo'], ['Lado'], ['Entrada'], ['Barras', 'num'], ['Notional', 'num'], ['Preço médio', 'num'], ['Agora', 'num'], ['Resultado', 'num'], ['%', 'num'],
+    ['Máx. a favor', 'num'], ['Máx. contra', 'num'], ['Funding', 'num'], ['Força na entrada', 'num'], ['p entrada', 'num'], ['p manter (última)', 'num']],
+    v.pos.map((p) => `<tr><td><b>${p.sym}</b></td><td>${sideTag(p.side)}</td><td class="mut">${dt(p.openTs)}</td><td class="num">${p.bars}</td><td class="num">${money(p.notional, 0)}</td>
+      <td class="num">${px(p.avg)}</td><td class="num">${px(p.mid)}</td><td class="num ${cls(p.upnl)}">${money(p.upnl)}</td><td class="num ${cls(p.upnlPct)}">${sgn(p.upnlPct * 100, 2, '%')}</td>
+      <td class="num pos">${sgn(p.mfe * 100, 2, '%')}</td><td class="num neg">${sgn(p.mae * 100, 2, '%')}</td><td class="num ${cls(p.funding)}">${money(p.funding)}</td>
+      <td class="num ${cls(p.scoreIn)}">${sgn(p.scoreIn, 0)}</td><td class="num">${pp(p.pIn)}</td><td class="num">${pp(p.lastKeep)}</td></tr>`),
+    'nenhuma posição aberta');
+  table($('j-dec'), [['Barra'], ['Ativo'], ['Pergunta'], ['Força', 'num'], ['Resposta'], ['Probabilidades'], ['Conf.', 'num'], ['Ação']],
+    v.decisions.map((d) => `<tr><td class="mut">${dt(d.bar - 900000)}</td><td><b>${d.sym}</b></td><td class="mut">${d.kind === 'entry' ? 'long/short/skip' : 'manter/fechar'}</td>
+      <td class="num ${cls(d.score)}">${sgn(d.score, 0)}</td>
+      <td>${d.error ? '<span class="neg">erro</span>' : d.kind === 'entry' ? sideTag(d.choice) : d.choice === 'close' ? tag('short', 'fechar') : tag('long', 'manter')}</td>
+      <td class="mut" style="font-size:12px">${d.error ? d.error : d.kind === 'entry' ? `long ${pp(d.p_long)} · short ${pp(d.p_short)} · skip ${pp(d.p_skip)}` : `manter ${pp(d.p_keep)} · fechar ${pp(d.p_close)}`}</td>
+      <td class="num">${fin(d.confidence) ? num(d.confidence) : '–'}</td><td class="mut">${d.action ?? ''}</td></tr>`),
+    'nenhuma consulta ainda');
+  $('j-n-closed').textContent = v.trades;
+  table($('j-closed'), [['Saída'], ['Ativo'], ['Lado'], ['Barras', 'num'], ['Entrada', 'num'], ['Saída', 'num'], ['Resultado', 'num'], ['%', 'num'], ['Funding', 'num'], ['Custo', 'num'], ['p fechar', 'num']],
+    v.closed.map((t) => `<tr><td class="mut">${dt(t.close_ts)}</td><td><b>${t.sym}</b></td><td>${sideTag(t.side)}</td><td class="num">${t.bars}</td><td class="num">${px(t.entry)}</td><td class="num">${px(t.exit)}</td>
+      <td class="num ${cls(t.pnl_usd)}">${money(t.pnl_usd)}</td><td class="num ${cls(t.pnl_pct)}">${sgn(t.pnl_pct * 100, 2, '%')}</td><td class="num ${cls(t.funding_usd)}">${money(t.funding_usd)}</td>
+      <td class="num mut">${money(t.cost_usd)}</td><td class="num">${pp(t.p_close)}</td></tr>`),
+    'nenhum trade fechado ainda');
+}
+
+setTab(tab);
+connect();
+</script>
+</body>
+</html>
